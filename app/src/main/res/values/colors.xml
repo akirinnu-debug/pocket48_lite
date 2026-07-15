@@ -1,5 +1,5 @@
 <resources>
     <color name="pocket48_primary">#F43F5E</color>
-    <color name="pocket48_background">#FAFAFA</color>
+    <color name="pocket48_background">#FFFFFF</color>
     <color name="pocket48_surface">#FFFFFF</color>
 </resources>
