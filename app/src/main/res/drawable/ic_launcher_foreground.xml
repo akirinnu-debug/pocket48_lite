@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+
+    <!-- 圆角背景（暖白色 #F8F7F5, iOS 风格圆角） -->
+    <path
+        android:fillColor="#F8F7F5"
+        android:pathData="M0,0 L1024,0 A200,200 0 0 1 1024,200 L1024,1024 A200,200 0 0 1 824,1024 L200,1024 A200,200 0 0 1 0,824 Z" />
+
+    <!-- "4" 字符（Arial Black 风格，粗体） -->
+    <!-- 在 1024x1024 视口中，文本中心点 x=512, 基线 y=620, 字号 560 -->
+    <!-- "4" 笔画宽度约 70 单位，左边缘 ~120, 右边缘 ~440, 中间横线 -->
+    <path
+        android:fillColor="#F96C90"
+        android:pathData="M120,740 L170,740 L470,380 L470,650 L520,650 L520,720 L470,720 L470,820 L400,820 L400,720 Z" />
+
+    <!-- "8" 上部圆环 -->
+    <path
+        android:fillColor="#F96C90"
+        android:pathData="M680,340 C 790,340 840,420 840,500 C 840,570 790,640 680,640 C 570,640 520,570 520,500 C 520,420 570,340 680,340 Z
+                         M680,420 C 630,420 600,460 600,500 C 600,540 630,570 680,570 C 730,570 760,540 760,500 C 760,460 730,420 680,420 Z" />
+
+    <!-- "8" 下部圆环（稍大） -->
+    <path
+        android:fillColor="#F96C90"
+        android:pathData="M680,590 C 810,590 860,690 860,780 C 860,860 810,920 680,920 C 550,920 500,860 500,780 C 500,690 550,590 680,590 Z
+                         M680,680 C 610,680 580,720 580,780 C 580,830 610,860 680,860 C 750,860 780,830 780,780 C 780,720 750,680 680,680 Z" />
+</vector>

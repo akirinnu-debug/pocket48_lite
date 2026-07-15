@@ -1,0 +1,26 @@
+# Gradle
+.gradle/
+build/
+
+# Local configuration
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Keystore
+*.jks
+*.keystore
+
+# Build artifacts
+*.apk
+*.aab
+*.apk.idsig
+
+# Logs
+build_log.txt
+
+# Kotlin session cache
+.kotlin/
