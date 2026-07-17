@@ -13,13 +13,13 @@ android {
         applicationId = "com.pocket48.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 100
-        versionName = "1.0.0"
+        versionCode = 110
+        versionName = "1.1.0"
     }
 
     signingConfigs {
         create("release") {
-            storeFile = file("keystore/release.keystore")
+            storeFile = file("D:\\Program Files\\MY DOCUMENTS\\WORK\\release.keystore")
             storePassword = System.getenv("P48_STORE_PASSWORD") ?: ""
             keyAlias = System.getenv("P48_KEY_ALIAS") ?: "pocket48lite"
             keyPassword = System.getenv("P48_KEY_PASSWORD") ?: ""

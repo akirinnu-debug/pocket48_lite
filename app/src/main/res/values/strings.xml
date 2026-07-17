@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Pocket48 Lite</string>
+    <string name="download_channel_name">视频下载</string>
+    <string name="download_channel_description">视频下载进度通知</string>
 </resources>

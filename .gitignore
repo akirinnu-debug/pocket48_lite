@@ -19,8 +19,15 @@ local.properties
 *.aab
 *.apk.idsig
 
-# Logs
+# Logs / 工作记录 (本地保留, 不提交)
 build_log.txt
+build_log_*.txt
+PROGRESS.txt
+PROGRESS_*.txt
+
+# 临时图片 (调试截图等)
+微信图片_*.jpg
+微信图片_*.png
 
 # Kotlin session cache
 .kotlin/

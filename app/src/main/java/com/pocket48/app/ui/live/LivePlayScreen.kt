@@ -1,6 +1,7 @@
 package com.pocket48.app.ui.live
 
 import android.app.Activity
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.SubtitlesOff
@@ -51,28 +54,55 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pocket48.app.data.model.DownloadItem
 import com.pocket48.app.ui.components.PlaybackPlayer
 import com.pocket48.app.ui.danmaku.DanmakuOverlay
 import com.pocket48.app.ui.danmaku.DanmakuPoolPanel
+import com.pocket48.app.viewmodel.DownloadViewModel
 import com.pocket48.app.viewmodel.LiveViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LivePlayScreen(liveId: String, onBack: () -> Unit) {
     val vm: LiveViewModel = viewModel()
+    val downloadVm: DownloadViewModel = viewModel()
     val state by vm.liveDetailState.collectAsState()
+    val resumePositionMs by vm.resumePositionMs.collectAsState()
+    val statusMap by downloadVm.statusMap.collectAsState()
+    val downloads by downloadVm.downloads.collectAsState()
 
     var showDanmaku by remember { mutableStateOf(true) }
     var showDanmakuPool by remember { mutableStateOf(true) }
     var isFullScreen by remember { mutableStateOf(false) }
     var positionMs by remember { mutableLongStateOf(0L) }
+    var durationMs by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(false) }
     var playbackError by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
+    // 持有最新位置, 供 onDispose 时保存 (DisposableEffect 不能直接读闭包外可变 state)
+    val positionRef = remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    val durationRef = remember { androidx.compose.runtime.mutableLongStateOf(0L) }
 
     LaunchedEffect(liveId) { vm.loadLiveDetail(liveId) }
-    DisposableEffect(Unit) { onDispose { vm.resetDetail() } }
+
+    // 关键修复: 同步历史中的续播位置到 positionRef, 防止 race condition
+    // 场景: 用户进入播放页后立即按返回 (<200ms), 此时 onPositionChanged 还没触发,
+    // positionRef 仍为 0, 退出保存时会把已有续播位置覆盖成 0
+    // 同步后即使立即退出, 保存的也是历史中的旧位置 (不会丢失进度)
+    LaunchedEffect(resumePositionMs) {
+        if (resumePositionMs > 0 && positionRef.longValue == 0L) {
+            positionRef.longValue = resumePositionMs
+        }
+    }
+
+    DisposableEffect(liveId) {
+        onDispose {
+            // 退出播放页: 先保存位置再 reset
+            vm.savePlayPosition(liveId, positionRef.longValue, durationRef.longValue)
+            vm.resetDetail()
+        }
+    }
 
     // 全屏状态下拦截返回键 -> 退出全屏；非全屏时透传到 onBack (退出播放)
     BackHandler(enabled = isFullScreen) {
@@ -94,6 +124,11 @@ fun LivePlayScreen(liveId: String, onBack: () -> Unit) {
         onDispose { }
     }
 
+    // 当前 liveId 的下载状态 (用于显示按钮态)
+    val currentStatus = statusMap[liveId]
+    val isInDownloadList = downloads.any { it.liveId == liveId }
+    val isDownloaded = currentStatus?.isCompleted == true
+
     Scaffold(
         topBar = {
             if (!isFullScreen) {
@@ -105,6 +140,56 @@ fun LivePlayScreen(liveId: String, onBack: () -> Unit) {
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    actions = {
+                        // 下载按钮 (3 态: 已下载/下载中或排队/未下载)
+                        val detail = (state as? LiveViewModel.LiveDetailState.Success)?.detail
+                        if (detail != null && detail.playUrl.isNotBlank()) {
+                            IconButton(onClick = {
+                                when {
+                                    isDownloaded -> {
+                                        Toast.makeText(context, "已下载, 可离线播放", Toast.LENGTH_SHORT).show()
+                                    }
+                                    isInDownloadList -> {
+                                        // 已在队列, 显示当前状态
+                                        val msg = currentStatus?.displayState ?: "已加入队列"
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    }
+                                    else -> {
+                                        val item = DownloadItem(
+                                            liveId = detail.liveId,
+                                            title = detail.title,
+                                            coverPath = detail.coverPath,
+                                            userId = detail.user?.userId ?: detail.createdBy,
+                                            userNickname = detail.user?.userName?.ifBlank { detail.createdName }
+                                                ?: detail.createdName,
+                                            userAvatar = detail.user?.userAvatar.orEmpty(),
+                                            playDuration = detail.playDuration,
+                                            m3u8Url = detail.playUrl,
+                                            lrcUrl = detail.danmakuUrl,
+                                            addedTime = System.currentTimeMillis(),
+                                            // 直播日期 (区分同标题同封面的不同场次)
+                                            // 兼容 ctime 与 startTime, 取非零值 (与 LiveListItem.displayTime 同策略)
+                                            liveDate = if (detail.ctime > 0) detail.ctime else detail.startTime,
+                                        )
+                                        downloadVm.enqueueDownload(item)
+                                        Toast.makeText(context, "已加入下载队列", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }) {
+                                Icon(
+                                    when {
+                                        isDownloaded -> Icons.Default.DownloadDone
+                                        isInDownloadList -> Icons.Default.Download
+                                        else -> Icons.Default.Download
+                                    },
+                                    contentDescription = if (isDownloaded) "已下载" else "下载",
+                                    tint = if (isDownloaded)
+                                        MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     },
                 )
@@ -131,9 +216,17 @@ fun LivePlayScreen(liveId: String, onBack: () -> Unit) {
                             m3u8Url = m3u8,
                             modifier = Modifier.fillMaxSize(),
                             isFullScreen = isFullScreen,
+                            initialPositionMs = resumePositionMs,
                             onFullScreenToggle = { isFullScreen = !isFullScreen },
-                            onPositionChanged = { positionMs = it },
+                            onPositionChanged = {
+                                positionMs = it
+                                positionRef.longValue = it
+                            },
                             onPlayingChanged = { isPlaying = it },
+                            onDurationChanged = {
+                                durationMs = it
+                                durationRef.longValue = it
+                            },
                             onError = { err -> playbackError = friendlyErrorMessage(err) },
                         )
 

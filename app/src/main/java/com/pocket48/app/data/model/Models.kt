@@ -212,3 +212,127 @@ fun formatRelativeTime(timestamp: Long): String {
         }
     }
 }
+
+/** 格式化时长 (毫秒 → "mm:ss" 或 "h:mm:ss") */
+fun formatDuration(ms: Long): String {
+    if (ms <= 0) return "00:00"
+    val totalSec = ms / 1000
+    val h = totalSec / 3600
+    val m = (totalSec % 3600) / 60
+    val s = totalSec % 60
+    return if (h > 0) {
+        String.format(java.util.Locale.CHINA, "%d:%02d:%02d", h, m, s)
+    } else {
+        String.format(java.util.Locale.CHINA, "%02d:%02d", m, s)
+    }
+}
+
+/**
+ * 格式化绝对日期 (用于下载列表区分同标题同封面场次)
+ *
+ * - 同年的显示 "MM-dd HH:mm" (更紧凑)
+ * - 跨年显示 "yyyy-MM-dd"
+ */
+fun formatLiveDate(timestamp: Long): String {
+    if (timestamp <= 0) return ""
+    val now = java.util.Calendar.getInstance()
+    val date = java.util.Calendar.getInstance().apply { timeInMillis = timestamp }
+    val sameYear = now.get(java.util.Calendar.YEAR) == date.get(java.util.Calendar.YEAR)
+    val pattern = if (sameYear) "MM-dd HH:mm" else "yyyy-MM-dd"
+    return java.text.SimpleDateFormat(pattern, java.util.Locale.CHINA)
+        .format(java.util.Date(timestamp))
+}
+
+// ===== 播放历史 =====
+
+/**
+ * 单条播放历史记录
+ *
+ * - 进入播放页即写入一条 (覆盖同 liveId 旧记录)
+ * - 退出播放页时更新 lastPlayPosition, 供 "继续观看"
+ * - 全部列表上限 100 条, LRU 淘汰
+ */
+@Serializable
+data class PlayHistory(
+    @SerialName("liveId") val liveId: String = "",
+    @SerialName("title") val title: String = "",
+    @SerialName("coverPath") val coverPath: String = "",
+    @SerialName("userId") val userId: Long = 0,
+    @SerialName("userNickname") val userNickname: String = "",
+    @SerialName("userAvatar") val userAvatar: String = "",
+    @SerialName("playDuration") val playDuration: Long = 0,
+    @SerialName("lastPlayPosition") var lastPlayPosition: Long = 0,
+    @SerialName("lastPlayTime") var lastPlayTime: Long = 0,
+) {
+    /** 是否有续播价值 (已播超过 5 秒且距结尾超过 5 秒) */
+    val hasResumePosition: Boolean
+        get() = lastPlayPosition > 5_000 &&
+            playDuration > 0 &&
+            playDuration - lastPlayPosition > 5_000
+}
+
+// ===== 下载任务 =====
+
+/**
+ * 下载任务索引项 (持久化于 DownloadStore)
+ *
+ * 进度/状态从 DownloadManager 实时查 (通过 liveId 关联)
+ * 此处仅存展示需要的元信息
+ */
+@Serializable
+data class DownloadItem(
+    @SerialName("liveId") val liveId: String = "",
+    @SerialName("title") val title: String = "",
+    @SerialName("coverPath") val coverPath: String = "",
+    @SerialName("userId") val userId: Long = 0,
+    @SerialName("userNickname") val userNickname: String = "",
+    @SerialName("userAvatar") val userAvatar: String = "",
+    @SerialName("playDuration") val playDuration: Long = 0,
+    @SerialName("m3u8Url") val m3u8Url: String = "",
+    @SerialName("lrcUrl") val lrcUrl: String? = null,
+    @SerialName("addedTime") val addedTime: Long = 0,
+    /** 直播开始时间戳 (用于下载列表区分同标题同封面的不同场次) */
+    @SerialName("liveDate") val liveDate: Long = 0,
+)
+
+/**
+ * 下载实时状态 (来自 DownloadManager)
+ *
+ * Media3 1.4.1 Download 状态常量 (源自 androidx.media3.exoplayer.offline.Download):
+ *   STATE_QUEUED      = 0  等待开始 (manager 暂停 / 容量满 / Requirements 未满足)
+ *   STATE_STOPPED     = 1  被显式停止 (stopReason != 0)
+ *   STATE_DOWNLOADING = 2  正在下载
+ *   STATE_COMPLETED   = 3  已完成
+ *   STATE_FAILED      = 4  失败
+ *   STATE_REMOVING    = 5  正在删除
+ *   STATE_RESTARTING  = 7  重启中
+ *
+ * 这里通过 Download.STATE_* 符号常量引用, 避免魔法数字
+ */
+data class DownloadStatus(
+    val liveId: String,
+    val state: Int,           // Download.STATE_*
+    val percent: Float,       // 0..100
+    val downloadedBytes: Long,
+    val totalBytes: Long,
+) {
+    val isCompleted: Boolean
+        get() = state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
+    val isDownloading: Boolean
+        get() = state == androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING ||
+            state == androidx.media3.exoplayer.offline.Download.STATE_QUEUED
+    val isPaused: Boolean
+        get() = state == androidx.media3.exoplayer.offline.Download.STATE_STOPPED
+    val isFailed: Boolean
+        get() = state == androidx.media3.exoplayer.offline.Download.STATE_FAILED
+    val displayState: String get() = when (state) {
+        androidx.media3.exoplayer.offline.Download.STATE_QUEUED -> "排队中"
+        androidx.media3.exoplayer.offline.Download.STATE_STOPPED -> "已暂停"
+        androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING -> "下载中"
+        androidx.media3.exoplayer.offline.Download.STATE_COMPLETED -> "已完成"
+        androidx.media3.exoplayer.offline.Download.STATE_FAILED -> "失败"
+        androidx.media3.exoplayer.offline.Download.STATE_REMOVING -> "删除中"
+        androidx.media3.exoplayer.offline.Download.STATE_RESTARTING -> "重启中"
+        else -> "未知"
+    }
+}

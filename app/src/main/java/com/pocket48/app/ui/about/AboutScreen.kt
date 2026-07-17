@@ -1,6 +1,7 @@
 package com.pocket48.app.ui.about
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +22,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.outlined.PrivacyTip
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,7 +38,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -77,9 +82,13 @@ private val OPEN_SOURCE_PROJECTS = listOf(
     ),
 )
 
+/** 官方开源仓库 (用于安全来源校验) */
+private const val OFFICIAL_REPO_URL = "https://github.com/akirinnu-debug/pocket48_lite"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen() {
+    val uriHandler = LocalUriHandler.current
     Scaffold(
         topBar = { TopAppBar(title = { Text("关于") }) }
     ) { padding ->
@@ -93,6 +102,12 @@ fun AboutScreen() {
             // === 应用标识 ===
             AppHeader()
             Spacer(Modifier.height(16.dp))
+
+            // === 安全提示 (置顶, 最显眼) ===
+            SecurityWarningCard(
+                onOpenRepo = { uriHandler.openUri(OFFICIAL_REPO_URL) },
+            )
+            Spacer(Modifier.height(12.dp))
 
             // === 技术说明 ===
             SectionCard(
@@ -160,6 +175,84 @@ fun AboutScreen() {
             // === 作者 ===
             AuthorFooter()
             Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
+/**
+ * 安全提示卡片 - 警告恶意搬运改版 + 指引到官方 GitHub 仓库
+ *
+ * 置顶显示, 用 error 色调强调, 引导用户验证安装包来源
+ */
+@Composable
+private fun SecurityWarningCard(onOpenRepo: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+        ),
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Outlined.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "安全提示 · 请认准官方来源",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "近期我们注意到网络上已出现未经授权的恶意搬运与改版。" +
+                        "这些改版可能包含后门、广告插件、数据窃取等风险代码，" +
+                        "我们无法保障其安全性。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                lineHeight = 19.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Pocket48 Lite 一直为开源且免费，源代码完全公开透明，" +
+                        "不含任何商业行为。为确保安全，请仅从以下官方 GitHub " +
+                        "仓库获取安装包：",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                lineHeight = 19.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            // 可点击的仓库链接
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+                    .clickable(onClick = onOpenRepo)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Default.VerifiedUser,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    OFFICIAL_REPO_URL,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    textDecoration = TextDecoration.Underline,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
     }
 }
