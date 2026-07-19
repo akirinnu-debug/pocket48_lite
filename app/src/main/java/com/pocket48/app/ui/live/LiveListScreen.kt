@@ -17,17 +17,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,12 +39,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,7 +78,29 @@ fun LiveListScreen(onLiveClick: (String) -> Unit) {
     val favoriteMembers by vm.favoriteMembers.collectAsState()
     val filterUserId by vm.filterUserId.collectAsState()
 
-    LaunchedEffect(Unit) { vm.loadLiveList(refresh = true) }
+    // 日期选择弹窗状态 (单日选择, 简化自旧 DateRangePicker)
+    var showDatePicker by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val locateSession by vm.locateSession.collectAsState()
+    val locateResult by vm.locateResult.collectAsState()
+    // 窗口视图独立的滚动状态 (避免污染主列表的 listState, 保护回弹修复)
+    val windowListState = rememberLazyListState()
+
+    // 仅在首次或数据为空时加载, 从播放页返回时不重新刷新 (保持 scroll 位置)
+    LaunchedEffect(Unit) {
+        val current = state
+        if (current !is LiveViewModel.LiveListState.Success || current.items.isEmpty()) {
+            vm.loadLiveList(refresh = true)
+        }
+    }
+
+    // 定位结果窗口出现时, 滚动到目标项
+    LaunchedEffect(locateResult) {
+        val r = locateResult ?: return@LaunchedEffect
+        if (r.targetIndex in 0..r.items.lastIndex) {
+            windowListState.scrollToItem(r.targetIndex)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -92,6 +120,21 @@ fun LiveListScreen(onLiveClick: (String) -> Unit) {
                     }
                 },
                 actions = {
+                    // 日期定位: 仅在选定成员后生效 (全部成员列表数据量太大, 翻页成本高)
+                    IconButton(
+                        onClick = { showDatePicker = true },
+                        enabled = filterUserId != 0L,
+                    ) {
+                        Icon(
+                            Icons.Default.CalendarMonth,
+                            contentDescription = "按日期定位",
+                            tint = if (filterUserId != 0L) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            },
+                        )
+                    }
                     IconButton(onClick = { vm.loadLiveList(refresh = true) }) {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
@@ -99,8 +142,6 @@ fun LiveListScreen(onLiveClick: (String) -> Unit) {
             )
         }
     ) { padding ->
-        val listState = rememberLazyListState()
-
         // 无限滚动
         val shouldLoadMore by remember {
             derivedStateOf {
@@ -117,7 +158,17 @@ fun LiveListScreen(onLiveClick: (String) -> Unit) {
         }
 
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when (state) {
+            // 定位结果窗口视图 (locateResult 非空时替换主列表, 主列表状态原样保留)
+            val window = locateResult
+            if (window != null) {
+                LocateResultWindow(
+                    window = window,
+                    windowListState = windowListState,
+                    onLiveClick = onLiveClick,
+                    onBackToLatest = { vm.dismissLocateResult() },
+                    onLoadOlder = { vm.loadOlderInWindow() },
+                )
+            } else when (state) {
                 is LiveViewModel.LiveListState.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -224,6 +275,85 @@ fun LiveListScreen(onLiveClick: (String) -> Unit) {
                 }
             }
         }
+
+        // 日期定位进度浮层 (底部居中) - 仅在定位任务运行中且尚未出窗口时显示
+        val session = locateSession
+        if (session != null && locateResult == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 24.dp),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (session.cancelable) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        }
+                        Text(session.status, fontSize = 13.sp)
+                        // Phase 2 起会有 estTotalPages, 此时显示百分比
+                        if (session.estTotalPages != null && session.estTotalPages > 0) {
+                            val pct = (session.progress * 100).toInt()
+                            Text(
+                                "$pct%",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        if (session.cancelable) {
+                            TextButton(
+                                onClick = { vm.cancelLocate() },
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                            ) {
+                                Text("取消", fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 日期选择弹窗 (单日, 跳转到当天最近一期回放)
+    if (showDatePicker) {
+        val dateState = rememberDatePickerState()
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val selectedMs = dateState.selectedDateMillis
+                        if (selectedMs != null) {
+                            // selectedMs 是当天 0 点 (UTC), 加 24h - 1ms 转为当天 23:59:59.999
+                            vm.locateToDate(selectedMs + 24 * 60 * 60 * 1000L - 1)
+                        }
+                        showDatePicker = false
+                    },
+                    enabled = dateState.selectedDateMillis != null,
+                ) { Text("跳转") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+            },
+            text = {
+                androidx.compose.foundation.layout.Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(360.dp),
+                ) {
+                    DatePicker(state = dateState)
+                }
+            },
+        )
     }
 }
 
@@ -334,13 +464,28 @@ private fun FavoriteChip(
     }
 }
 
-/** 直播卡片 */
+/** 直播卡片
+ * @param isTarget 是否为定位目标项 (true 时加边框高亮) */
 @Composable
-private fun LiveCard(item: LiveListItem, onClick: () -> Unit) {
+private fun LiveCard(item: LiveListItem, onClick: () -> Unit, isTarget: Boolean = false) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isTarget) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = if (isTarget) {
+            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            null
+        },
     ) {
         Row(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
@@ -358,13 +503,29 @@ private fun LiveCard(item: LiveListItem, onClick: () -> Unit) {
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    item.title.ifBlank { "无标题" },
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        item.title.ifBlank { "无标题" },
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (isTarget) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "目标",
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.primary)
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                    }
+                }
                 Spacer(Modifier.height(4.dp))
                 val memberName = item.userInfo?.let { it.starName.ifBlank { it.nickname } }?.ifBlank { item.createdName }.orEmpty()
                 if (memberName.isNotBlank()) {
@@ -388,6 +549,95 @@ private fun LiveCard(item: LiveListItem, onClick: () -> Unit) {
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(32.dp),
             )
+        }
+    }
+}
+
+/**
+ * 日期定位结果窗口视图
+ *
+ * - 顶部: "← 返回最新" 按钮 (调 dismissLocateResult, 不触碰主列表)
+ * - 中间: 窗口 items, 目标项高亮 (LiveCard isTarget=true)
+ * - 底部: canLoadOlder 时显示 "加载更早" 按钮 (调 loadOlderInWindow)
+ *
+ * 使用独立的 windowListState, 避免污染主列表的 listState
+ */
+@Composable
+private fun LocateResultWindow(
+    window: com.pocket48.app.data.model.LocateWindow,
+    windowListState: androidx.compose.foundation.lazy.LazyListState,
+    onLiveClick: (String) -> Unit,
+    onBackToLatest: () -> Unit,
+    onLoadOlder: () -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        state = windowListState,
+        contentPadding = PaddingValues(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // 顶部返回按钮
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(
+                    onClick = onBackToLatest,
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text("返回最新")
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "定位结果 (${window.items.size} 条)",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        // 窗口列表
+        itemsIndexed(window.items) { index, item ->
+            LiveCard(
+                item = item,
+                onClick = { onLiveClick(item.liveId) },
+                isTarget = index == window.targetIndex,
+            )
+        }
+
+        // 底部加载更早
+        if (window.canLoadOlder) {
+            item {
+                Box(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    TextButton(onClick = onLoadOlder) {
+                        Text("加载更早")
+                    }
+                }
+            }
+        } else {
+            item {
+                Text(
+                    "已到最早",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }

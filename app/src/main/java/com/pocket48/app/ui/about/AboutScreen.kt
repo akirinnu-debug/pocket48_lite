@@ -19,14 +19,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +37,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +52,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pocket48.app.Pocket48App
+import com.pocket48.app.data.store.MemberUpdateResult
+import kotlinx.coroutines.launch
 
 /**
  * 开源项目致谢 - 数据来源
@@ -126,6 +138,10 @@ fun AboutScreen() {
             }
             Spacer(Modifier.height(12.dp))
 
+            // === 成员数据更新 ===
+            MemberDataUpdateCard()
+            Spacer(Modifier.height(12.dp))
+
             // === 开源致谢 ===
             SectionCard(
                 title = "致谢 / 开源项目",
@@ -175,6 +191,76 @@ fun AboutScreen() {
             // === 作者 ===
             AuthorFooter()
             Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
+/**
+ * 成员数据更新卡片
+ *
+ * - 显示当前本地版本号 (DataStore 持久化)
+ * - "检查更新" 按钮手动触发 checkAndUpdateFromRemote
+ * - 启动时 Pocket48App.onCreate 已自动后台检查一次, 这里供用户主动触发
+ * - 拉取成功后写入 filesDir/members.json, 下次 loadMembers 自动生效
+ */
+@Composable
+private fun MemberDataUpdateCard() {
+    val coroutineScope = rememberCoroutineScope()
+    val memberStore = Pocket48App.instance.memberStore
+    val localVersion by memberStore.localVersion.collectAsState(initial = 0)
+    var updateStatus by remember { mutableStateOf<String?>(null) }
+    var checking by remember { mutableStateOf(false) }
+
+    SectionCard(
+        title = "成员数据更新",
+        icon = { Icon(Icons.Default.CloudDownload, null, modifier = Modifier.size(18.dp)) },
+    ) {
+        Text(
+            "当前版本: v$localVersion",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "从 GitHub 仓库拉取最新成员数据 (含退团/毕业/入列变动)，" +
+                    "更新后下次进入成员列表即生效。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = 18.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+        Button(
+            onClick = {
+                checking = true
+                updateStatus = null
+                coroutineScope.launch {
+                    val result = memberStore.checkAndUpdateFromRemote()
+                    checking = false
+                    updateStatus = when (result) {
+                        is MemberUpdateResult.UpToDate -> "已是最新版本 (v${result.version})"
+                        is MemberUpdateResult.Updated -> "已更新到 v${result.version} (${result.count} 条)"
+                        is MemberUpdateResult.Failed -> "检查失败: ${result.message}"
+                    }
+                }
+            },
+            enabled = !checking,
+        ) {
+            if (checking) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(14.dp),
+                    strokeWidth = 2.dp,
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(if (checking) "检查中..." else "检查更新")
+        }
+        updateStatus?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }

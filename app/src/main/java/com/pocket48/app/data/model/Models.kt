@@ -183,6 +183,23 @@ data class MemberInfo(
     val displayStatus: MemberStatus get() = effectiveStatus()
 }
 
+/**
+ * members.json 的 wrapper 结构 (新版)
+ *
+ * - version: 数据版本号, 每次更新手动 +1, 客户端对比此值决定是否拉取
+ * - updatedAt: ISO 时间字符串, 维护者手动更新 (仅展示用, 不参与版本对比)
+ * - members: 实际成员数组 (与旧 assets/members.json 纯数组格式一致)
+ *
+ * 旧版 assets/members.json 是纯数组, MemberStore.loadMembers() 兼容两种格式.
+ * 远程 raw.githubusercontent.com/akirinnu-debug/pocket48_lite/main/members.json 始终是新格式.
+ */
+@Serializable
+data class MembersData(
+    @SerialName("version") val version: Int = 0,
+    @SerialName("updatedAt") val updatedAt: String = "",
+    @SerialName("members") val members: List<MemberInfo> = emptyList(),
+)
+
 // ===== LRC 弹幕模型 =====
 
 data class LrcLine(
