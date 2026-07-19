@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.pocket48.app.data.model.LiveListItem
@@ -344,14 +345,9 @@ fun LiveListScreen(onLiveClick: (String) -> Unit) {
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) { Text("取消") }
             },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
             text = {
-                androidx.compose.foundation.layout.Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(360.dp),
-                ) {
-                    DatePicker(state = dateState)
-                }
+                DatePicker(state = dateState, modifier = Modifier.width(360.dp))
             },
         )
     }
@@ -465,7 +461,7 @@ private fun FavoriteChip(
 }
 
 /** 直播卡片
- * @param isTarget 是否为定位目标项 (true 时加边框高亮) */
+ * @param isTarget 是否为定位目标项 (true 时背景高亮) */
 @Composable
 private fun LiveCard(item: LiveListItem, onClick: () -> Unit, isTarget: Boolean = false) {
     Card(
@@ -481,11 +477,6 @@ private fun LiveCard(item: LiveListItem, onClick: () -> Unit, isTarget: Boolean 
             },
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = if (isTarget) {
-            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-        } else {
-            null
-        },
     ) {
         Row(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
@@ -512,19 +503,7 @@ private fun LiveCard(item: LiveListItem, onClick: () -> Unit, isTarget: Boolean 
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    if (isTarget) {
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "目标",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.primary)
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                        )
-                    }
+
                 }
                 Spacer(Modifier.height(4.dp))
                 val memberName = item.userInfo?.let { it.starName.ifBlank { it.nickname } }?.ifBlank { item.createdName }.orEmpty()

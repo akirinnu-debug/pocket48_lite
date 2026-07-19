@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
@@ -49,9 +51,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pocket48.app.BuildConfig
 import com.pocket48.app.Pocket48App
 import com.pocket48.app.data.store.MemberUpdateResult
 import kotlinx.coroutines.launch
@@ -115,7 +119,11 @@ fun AboutScreen() {
             AppHeader()
             Spacer(Modifier.height(16.dp))
 
-            // === 安全提示 (置顶, 最显眼) ===
+            // === 成员数据更新 ===
+            MemberDataUpdateCard()
+            Spacer(Modifier.height(12.dp))
+
+            // === 安全提示 ===
             SecurityWarningCard(
                 onOpenRepo = { uriHandler.openUri(OFFICIAL_REPO_URL) },
             )
@@ -138,18 +146,33 @@ fun AboutScreen() {
             }
             Spacer(Modifier.height(12.dp))
 
-            // === 成员数据更新 ===
-            MemberDataUpdateCard()
-            Spacer(Modifier.height(12.dp))
-
-            // === 开源致谢 ===
+            // === 开源致谢 (可折叠) ===
+            var acksExpanded by remember { mutableStateOf(false) }
             SectionCard(
-                title = "致谢 / 开源项目",
+                title = "致谢 / 开源项目 (${OPEN_SOURCE_PROJECTS.size})",
                 icon = { Icon(Icons.Default.Code, null, modifier = Modifier.size(18.dp)) },
+                onClick = { acksExpanded = !acksExpanded },
+                trailing = {
+                    Icon(
+                        if (acksExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (acksExpanded) "收起" else "展开",
+                        modifier = Modifier.size(18.dp),
+                    )
+                },
             ) {
-                OPEN_SOURCE_PROJECTS.forEach { p ->
-                    OpenSourceItem(p)
-                    Spacer(Modifier.height(8.dp))
+                if (acksExpanded) {
+                    OPEN_SOURCE_PROJECTS.forEach { p ->
+                        OpenSourceItem(p)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                } else {
+                    Text(
+                        OPEN_SOURCE_PROJECTS.joinToString("、") { it.name },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -268,7 +291,7 @@ private fun MemberDataUpdateCard() {
 /**
  * 安全提示卡片 - 警告恶意搬运改版 + 指引到官方 GitHub 仓库
  *
- * 置顶显示, 用 error 色调强调, 引导用户验证安装包来源
+ * 紧凑显示, 一行警示文字 + 可点击仓库链接
  */
 @Composable
 private fun SecurityWarningCard(onOpenRepo: () -> Unit) {
@@ -277,68 +300,33 @@ private fun SecurityWarningCard(onOpenRepo: () -> Unit) {
         shape = RoundedCornerShape(10.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         ),
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.Warning,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    "安全提示 · 请认准官方来源",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "近期我们注意到网络上已出现未经授权的恶意搬运与改版。" +
-                        "这些改版可能包含后门、广告插件、数据窃取等风险代码，" +
-                        "我们无法保障其安全性。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                lineHeight = 19.sp,
+        Row(
+            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Outlined.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(18.dp),
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.width(8.dp))
             Text(
-                "Pocket48 Lite 一直为开源且免费，源代码完全公开透明，" +
-                        "不含任何商业行为。为确保安全，请仅从以下官方 GitHub " +
-                        "仓库获取安装包：",
+                "请认准官方来源: ",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                lineHeight = 19.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(8.dp))
-            // 可点击的仓库链接
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
-                    .clickable(onClick = onOpenRepo)
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    Icons.Default.VerifiedUser,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    OFFICIAL_REPO_URL,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    textDecoration = TextDecoration.Underline,
-                    fontWeight = FontWeight.Medium,
-                )
-            }
+            Spacer(Modifier.width(4.dp))
+            Text(
+                OFFICIAL_REPO_URL,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier.clickable(onClick = onOpenRepo),
+            )
         }
     }
 }
@@ -364,7 +352,7 @@ private fun AppHeader() {
             )
         }
         Spacer(Modifier.width(12.dp))
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 "Pocket48 Lite",
                 style = MaterialTheme.typography.titleMedium,
@@ -376,6 +364,13 @@ private fun AppHeader() {
                 color = MaterialTheme.colorScheme.secondary,
             )
         }
+        // 右上角版本号
+        Text(
+            text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 11.sp,
+        )
     }
 }
 
@@ -383,6 +378,8 @@ private fun AppHeader() {
 private fun SectionCard(
     title: String,
     icon: @Composable () -> Unit,
+    onClick: (() -> Unit)? = null,
+    trailing: @Composable (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     Card(
@@ -394,14 +391,19 @@ private fun SectionCard(
         ),
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = (if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 icon()
                 Spacer(Modifier.width(6.dp))
                 Text(
                     title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
                 )
+                if (trailing != null) trailing()
             }
             Spacer(Modifier.height(8.dp))
             content()

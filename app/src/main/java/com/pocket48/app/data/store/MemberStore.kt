@@ -22,9 +22,9 @@ private val Context.memberDataStore by preferencesDataStore("member_prefs")
 private val FAVORITE_KEY = stringSetPreferencesKey("favorite_ids")
 private val VERSION_KEY = intPreferencesKey("members_version")
 
-/** 远程 members.json 固定 URL (raw.githubusercontent.com, master 分支, 仓库根目录) */
+/** 远程 members.json 固定 URL (jsDelivr CDN, master 分支, 仓库根目录) */
 private const val REMOTE_URL =
-    "https://raw.githubusercontent.com/akirinnu-debug/pocket48_lite/master/members.json"
+    "https://cdn.jsdelivr.net/gh/akirinnu-debug/pocket48_lite@master/members.json"
 
 /** members.json 远程更新检查结果 */
 sealed class MemberUpdateResult {

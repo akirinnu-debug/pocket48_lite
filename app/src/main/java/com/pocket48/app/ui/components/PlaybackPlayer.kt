@@ -150,6 +150,12 @@ fun PlaybackPlayer(
                     setShutterBackgroundColor(android.graphics.Color.BLACK)
                 }
             },
+            update = { pv ->
+                // 长按倍速期间禁用 controller, 防止松手 UP 事件触发 PlayerView 显示进度条
+                // PlayerView 是 Android View, 其 onTouchEvent 与 Compose pointerInput 独立,
+                // 必须通过 useController = false 让它忽略 UP 事件
+                pv.useController = !isLongPressSpeed
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
@@ -167,6 +173,7 @@ fun PlaybackPlayer(
                         }
                         if (up == null) {
                             // 长按触发: 进入 2x 倍速
+                            // isLongPressSpeed = true 触发 recomposition, update 块同步禁用 controller
                             isLongPressSpeed = true
                             player.playbackParameters = PlaybackParameters(2.0f)
                             // 阻塞等待真正抬手 (此时手指仍按住)
@@ -176,10 +183,12 @@ fun PlaybackPlayer(
                                     if (event.changes.any { it.changedToUp() }) break
                                 }
                             }
+                            // isLongPressSpeed = false 触发 recomposition, update 块恢复 controller
+                            // 由于 UP 事件到达 PlayerView 时 useController 已为 false, 不会显示进度条
                             isLongPressSpeed = false
                             player.playbackParameters = PlaybackParameters(1.0f)
                         }
-                        // 不消费事件, 让 PlayerView 仍能收到 ACTION_DOWN/MOVE 显示 controller
+                        // 不消费事件, 让 PlayerView 仍能收到 ACTION_DOWN/MOVE 显示 controller (单击场景)
                     }
                 },
         )

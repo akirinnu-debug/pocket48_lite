@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit
  */
 class Pocket48Api(cacheDir: java.io.File? = null) {
 
-    private val client = OkHttpClient.Builder()
+    val httpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .cache(cacheDir?.let { dir ->
@@ -66,7 +66,7 @@ class Pocket48Api(cacheDir: java.io.File? = null) {
                     .post(body.toString().toRequestBody("application/json".toMediaType()))
                     .build()
 
-                val response = client.newCall(request).execute()
+                val response = httpClient.newCall(request).execute()
                 val text = response.body?.string() ?: return@withContext null
                 Log.d(TAG, "POST $path -> ${response.code}: ${text.take(300)}")
                 json.parseToJsonElement(text).jsonObject
@@ -118,7 +118,7 @@ class Pocket48Api(cacheDir: java.io.File? = null) {
     suspend fun fetchLrc(url: String): String? = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder().url(url).build()
-            val response = client.newCall(request).execute()
+            val response = httpClient.newCall(request).execute()
             response.body?.string()
         } catch (e: Exception) {
             Log.e(TAG, "fetchLrc failed", e)
