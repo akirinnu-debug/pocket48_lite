@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pocket48 系列应用下载</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --primary: #3B82F6;
+    --primary-dark: #2563EB;
+    --gradient: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%);
+    --bg: #F8FAFC;
+    --card: #FFFFFF;
+    --text: #1F2937;
+    --text-muted: #6B7280;
+    --border: #E5E7EB;
+    --success: #10B981;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-hover: 0 4px 12px rgba(59,130,246,0.15);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+  }
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 48px 16px 32px;
+    background: var(--gradient);
+    color: #fff;
+    border-radius: 16px;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 24px rgba(59,130,246,0.2);
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+  .header p {
+    font-size: 14px;
+    opacity: 0.92;
+  }
+  /* Section */
+  .section {
+    margin-bottom: 32px;
+  }
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding-left: 12px;
+    border-left: 4px solid var(--primary);
+  }
+  .section-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    padding-left: 16px;
+  }
+  /* Version Card */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+    transition: all 0.2s ease;
+  }
+  .card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-1px);
+  }
+  .card.latest {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, #EFF6FF 0%, #FFFFFF 100%);
+  }
+  .card.coming {
+    border-style: dashed;
+    border-color: #D1D5DB;
+    background: #FAFAFA;
+  }
+  .card-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .version-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .version-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .badge-latest {
+    background: var(--gradient);
+    color: #fff;
+  }
+  .badge-coming {
+    background: #F3F4F6;
+    color: var(--text-muted);
+  }
+  .version-meta {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  /* Buttons */
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--gradient);
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, #0891B2 100%);
+  }
+  .btn-secondary {
+    background: #F3F4F6;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover {
+    background: #E5E7EB;
+  }
+  .btn-disabled {
+    background: #F3F4F6;
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+  .password {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--text-muted);
+    padding: 6px 10px;
+    background: #F9FAFB;
+    border-radius: 6px;
+    border: 1px dashed var(--border);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .password:hover {
+    background: #EFF6FF;
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+  .password.copied {
+    background: #ECFDF5;
+    border-color: var(--success);
+    color: var(--success);
+  }
+  .coming-text {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+  .tab {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    text-align: center;
+    font-family: inherit;
+  }
+  .tab:hover {
+    color: var(--primary);
+    background: #EFF6FF;
+  }
+  .tab.active {
+    background: var(--gradient);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+  }
+  .section { display: none; }
+  .section.active { display: block; }
+  /* Feedback */
+  .feedback {
+    background: #FFFBEB;
+    border: 1px solid #FCD34D;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #92400E;
+    line-height: 1.7;
+  }
+  .feedback strong {
+    color: #78350F;
+    font-weight: 600;
+  }
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 32px 16px 16px;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .footer a {
+    color: var(--primary);
+    text-decoration: none;
+  }
+  .footer a:hover {
+    text-decoration: underline;
+  }
+  /* 个人主页链接 */
+  .profiles {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .profile-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+  .profile-link:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: 0 2px 8px rgba(59,130,246,0.15);
+    transform: translateY(-1px);
+  }
+  .profile-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(31, 41, 55, 0.92);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.25s ease;
+    z-index: 1000;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  /* Mobile */
+  @media (max-width: 600px) {
+    .header h1 { font-size: 22px; }
+    .card { padding: 14px 16px; }
+    .card-row { flex-direction: column; align-items: flex-start; }
+    .actions { width: 100%; justify-content: flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>Pocket48 系列应用</h1>
+    <p>开源技术研究 · 个人学习用途 · 仅支持 Android</p>
+  </div>
+
+  <!-- Tab 导航 -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('lite', this)">Pocket48 Lite</button>
+    <button class="tab" onclick="switchTab('msg', this)">pocket_msg</button>
+  </div>
+
+  <!-- Pocket48 Lite -->
+  <div class="section active" id="section-lite">
+    <div class="section-title">Pocket48 Lite</div>
+    <div class="section-subtitle">口袋48 直播回放离线播放器 · 自定义播放器 + 弹幕 + 下载</div>
+
+    <!-- 1.3.3 预留位置 (即将发布) -->
+    <div class="card coming">
+      <div class="card-row">
+        <div class="version-info">
+          <div class="version-name">
+            Pocket48 Lite_1.3.3
+            <span class="badge badge-coming">敬请期待</span>
+          </div>
+          <div class="version-meta">听直播模式 · 缓存上限可配置 · 刘海屏兼容 · 弹幕优化</div>
+        </div>
+        <div class="actions">
+          <span class="coming-text">即将发布</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1.3.2 -->
+    <div class="card">
+      <div class="card-row">
+        <div class="version-info">
+          <div class="version-name">Pocket48 Lite_1.3.2</div>
+          <div class="version-meta">稳定版本</div>
+        </div>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://wwbsj.lanzoul.com/if7jT409lcuh" target="_blank" rel="noopener">下载</a>
+          <span class="password" onclick="copyPassword(this, 'a6x6')">密码: a6x6</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1.3.1 -->
+    <div class="card">
+      <div class="card-row">
+        <div class="version-info">
+          <div class="version-name">Pocket48 Lite_1.3.1</div>
+          <div class="version-meta">历史版本</div>
+        </div>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://wwbsj.lanzoul.com/izxPy3ye7b1g" target="_blank" rel="noopener">下载</a>
+          <span class="password" onclick="copyPassword(this, 'a2no')">密码: a2no</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1.2.0 -->
+    <div class="card">
+      <div class="card-row">
+        <div class="version-info">
+          <div class="version-name">Pocket48 Lite_1.2.0</div>
+          <div class="version-meta">历史版本</div>
+        </div>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://wwbsj.lanzoul.com/im9W53xhbszi" target="_blank" rel="noopener">下载</a>
+          <span class="password" onclick="copyPassword(this, 'b8h8')">密码: b8h8</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1.1.0 -->
+    <div class="card">
+      <div class="card-row">
+        <div class="version-info">
+          <div class="version-name">Pocket48 Lite_1.1.0</div>
+          <div class="version-meta">历史版本</div>
+        </div>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://wwbsj.lanzoul.com/iwwgX3x0yu5g" target="_blank" rel="noopener">下载</a>
+          <span class="password" onclick="copyPassword(this, '5i8v')">密码: 5i8v</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1.0.0 -->
+    <div class="card">
+      <div class="card-row">
+        <div class="version-info">
+          <div class="version-name">Pocket48 Lite_1.0.0</div>
+          <div class="version-meta">首个版本</div>
+        </div>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://wwbsj.lanzoul.com/ihauY3wiemkf" target="_blank" rel="noopener">下载</a>
+          <span class="password" onclick="copyPassword(this, 'ebyr')">密码: ebyr</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- pocket_msg -->
+  <div class="section" id="section-msg">
+    <div class="section-title">pocket_msg</div>
+    <div class="section-subtitle">口袋48 消息聚合工具</div>
+
+    <!-- 1.0.0 -->
+    <div class="card">
+      <div class="card-row">
+        <div class="version-info">
+          <div class="version-name">pocket_msg_1.0.0</div>
+          <div class="version-meta">首个版本</div>
+        </div>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://wwbsj.lanzoul.com/iDtzi3zq2npa" target="_blank" rel="noopener">下载</a>
+          <span class="password" onclick="copyPassword(this, '1kwc')">密码: 1kwc</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 反馈提示 -->
+  <div class="feedback">
+    <strong>遇到问题？</strong>如密码错误或下载链接无效，请通过下方个人主页反馈，将在第一时间修复。
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div>本页面仅提供 Pocket48 系列应用的下载入口</div>
+    <div>所有应用仅供个人学习与开源技术研究使用，版权归原版权方所有</div>
+    <div>如有侵权请联系下架处理</div>
+
+    <!-- 个人主页 -->
+    <div class="profiles">
+      <a class="profile-link" href="https://v.douyin.com/eML8dYszkko/" target="_blank" rel="noopener">
+        <svg class="profile-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V8.45a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.84-.28z"/>
+        </svg>
+        抖音
+      </a>
+      <a class="profile-link" href="https://m.bilibili.com/space/329029343" target="_blank" rel="noopener">
+        <svg class="profile-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906L17.813 4.653zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zm2.347 3.013c.356 0 .658.124.907.373.249.249.373.551.373.907v1.173c0 .356-.124.662-.373.911a1.234 1.234 0 0 1-.907.36 1.234 1.234 0 0 1-.907-.36 1.234 1.234 0 0 1-.373-.91v-1.174c0-.356.124-.658.373-.907.249-.249.551-.373.907-.373zm8.64 0c.356 0 .658.124.907.373.249.249.373.551.373.907v1.173c0 .356-.124.662-.373.911a1.234 1.234 0 0 1-.907.36 1.234 1.234 0 0 1-.907-.36 1.234 1.234 0 0 1-.373-.91v-1.174c0-.356.124-.658.373-.907.249-.249.551-.373.907-.373z"/>
+        </svg>
+        哔哩哔哩
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">密码已复制到剪贴板</div>
+
+<script>
+  // Tab 切换: 显示对应 section, 隐藏另一个
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('section-' + name).classList.add('active');
+    // 滚动到顶部, 避免切换后停留在原位置
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function copyPassword(el, pwd) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(pwd).then(function() {
+        showCopied(el);
+      }.bind(null, el)).catch(function() {
+        fallbackCopy(pwd, el);
+      });
+    } else {
+      fallbackCopy(pwd, el);
+    }
+  }
+  function fallbackCopy(text, el) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); showCopied(el); } catch(e) {}
+    document.body.removeChild(ta);
+  }
+  function showCopied(el) {
+    var original = el.textContent;
+    el.textContent = '已复制';
+    el.classList.add('copied');
+    var toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(function() {
+      el.textContent = original;
+      el.classList.remove('copied');
+      toast.classList.remove('show');
+    }, 1500);
+  }
+</script>
+</body>
+</html>
